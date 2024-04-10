@@ -1,3 +1,5 @@
+#include <SDL.h>
+#include <SDL_ttf.h>
 #include <cart.h>
 #include <emu.h>
 
@@ -24,6 +26,13 @@ int emu_run(int argc, char *argv[]) {
     printf("Failed to load ROM file: %s\n", argv[1]);
     return -2;
   }
+
+  printf("Cart loaded...\n");
+
+  SDL_Init(SDL_INIT_VIDEO);
+  printf("SDL initialized...\n");
+  TTF_Init();
+  printf("TTF initialized...\n");
 
   return 0;
 }
