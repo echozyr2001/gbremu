@@ -1,3 +1,3 @@
-int main(int argc, char **argv) {
-  return 0;
-}
+#include <emu.h>
+
+int main(int argc, char *argv[]) { return emu_run(argc, argv); }
