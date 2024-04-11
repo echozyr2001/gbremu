@@ -2,6 +2,7 @@
 
 const char *cart_lic_name();
 const char *cart_type_name();
+bool check_logo();
 
 static cart_context ctx;
 
@@ -30,6 +31,11 @@ bool cart_load(char *cart) {
 
   // set the header to the address of the rom_data + 0x100
   ctx.header = (rom_header *)(ctx.rom_data + 0x100);
+
+  if (!check_logo()) {
+    printf("Invalid logo...\n");
+    return -3;
+  }
 
   printf("Cartridge Loaded:\n");
   printf("\t Title    : %s\n", ctx.header->title);
@@ -554,4 +560,13 @@ const char *cart_type_name() {
   default:
     return "UNKNOWN";
   }
+}
+
+bool check_logo() {
+  for (int i = 0; i < 0x30; i++) {
+    if (ctx.header->logo[i] != expected_logo[i]) {
+      return false;
+    }
+  }
+  return true;
 }
