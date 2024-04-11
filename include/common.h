@@ -17,4 +17,17 @@ static const u8 expected_logo[0x30] = {
     0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E,
 };
 
+#define NO_IMPL                                                                \
+  {                                                                            \
+    fprintf(stderr, "NO IMPL: No impl code in %s at %s:%d\n", __func__,        \
+            __FILE__, __LINE__);                                               \
+    abort();                                                                   \
+  }
+
+#define UN_REACHABLE                                                           \
+  {                                                                            \
+    fprintf(stderr, "UNREACHABLE: Reached unreachable code in %s at %s:%d\n",  \
+            __func__, __FILE__, __LINE__);                                     \
+    abort();                                                                   \
+  }
 #endif
