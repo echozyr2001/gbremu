@@ -61,6 +61,7 @@ bool cart_load(char *cart) {
 
 const char *cart_lic_name() {
   int status = ctx.header->old_lic_code == 0x33 ? 1 : 0;
+  status = 2;
   switch (status) {
   case 0: { // old LIC code
     switch (ctx.header->old_lic_code) {
@@ -107,8 +108,7 @@ const char *cart_lic_name() {
     case 0x32:
       return "Bandai";
     case 0x33:
-      // this is unreachable
-      return "UNKNOWN";
+      UN_REACHABLE;
     case 0x34:
       return "Konami";
     case 0x35:
@@ -494,8 +494,7 @@ const char *cart_lic_name() {
     }
   }
   default:
-    // this is unreachable
-    return "UNKNOWN";
+    UN_REACHABLE;
   }
 }
 
