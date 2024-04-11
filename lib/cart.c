@@ -61,7 +61,6 @@ bool cart_load(char *cart) {
 
 const char *cart_lic_name() {
   int status = ctx.header->old_lic_code == 0x33 ? 1 : 0;
-  status = 2;
   switch (status) {
   case 0: { // old LIC code
     switch (ctx.header->old_lic_code) {
