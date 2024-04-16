@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 libemu = { path = "../libemu" }
+sdl2 = "0.36.0"
