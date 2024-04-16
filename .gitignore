@@ -28,4 +28,5 @@ Cargo.lock
 
 ### others
 roms/
+.env
 ###
