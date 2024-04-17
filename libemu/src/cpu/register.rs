@@ -143,3 +143,22 @@ pub enum Flags {
   H, // bit 5
   C, // bit 4
 }
+
+pub enum Register8 {
+  A,
+  B,
+  C,
+  D,
+  E,
+  H,
+  L,
+}
+
+pub enum Register16 {
+  AF,
+  BC,
+  DE,
+  HL,
+  SP,
+  PC,
+}

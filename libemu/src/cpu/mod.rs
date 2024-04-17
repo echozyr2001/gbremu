@@ -1,5 +1,6 @@
 use self::register::Register;
 
+pub mod instructions;
 pub mod register;
 
 pub struct CPU {
