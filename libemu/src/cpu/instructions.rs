@@ -1,6 +1,6 @@
 use super::register::{Register16, Register8};
 
-enum InstType {
+pub enum InstType {
   ALI8(Arithmetic8),
   LI(Logic),
   ALI16(Arithmetic16),
@@ -11,7 +11,7 @@ enum InstType {
   SOI(StackOperations),
 }
 
-enum Arithmetic8 {
+pub enum Arithmetic8 {
   /// Add the value in r8 plus the carry flag to A.
   /// Bytes: 1
   /// Cycles: 1
@@ -86,7 +86,7 @@ enum Arithmetic8 {
   SubAU8(u8),
 }
 
-enum Logic {
+pub enum Logic {
   /// Bitwise AND between the value in r8 and A.
   /// Bytes: 1
   /// Cycles: 1
@@ -110,7 +110,7 @@ enum Logic {
   XorAU8(u8),
 }
 
-enum Arithmetic16 {
+pub enum Arithmetic16 {
   /// Add the value in r16 to HL.
   /// Bytes: 1
   /// Cycles: 2
@@ -128,7 +128,7 @@ enum Arithmetic16 {
   IncR16(Register16),
 }
 
-enum BitOperations {
+pub enum BitOperations {
   /// Test bit u3 in register r8, set the zero flag if bit not set.
   /// Bytes: 2
   /// Cycles: 2
@@ -147,7 +147,7 @@ enum BitOperations {
   SwapHl,
 }
 
-enum BitShift {
+pub enum BitShift {
   RlR8(Register8),
   RlHl,
   RlA,
@@ -168,7 +168,7 @@ enum BitShift {
   SrlHl,
 }
 
-enum Load {
+pub enum Load {
   /// Load (copy) value in register on the right into register on the left.
   /// Bytes: 1
   /// Cycles: 1
@@ -261,7 +261,7 @@ enum Load {
   LdAHld,
 }
 
-enum JumpsAndSubroutines {
+pub enum JumpsAndSubroutines {
   /// Call address n16. This pushes the address of the instruction after the CALL on the stack,
   /// such that RET can pop it later; then, it executes an implicit JP n16.
   /// Bytes: 3
@@ -309,7 +309,7 @@ enum JumpsAndSubroutines {
   Rst(u16),
 }
 
-enum StackOperations {
+pub enum StackOperations {
   /// Add the value in Sp to Hl.
   /// Bytes: 1
   /// Cycles: 2
