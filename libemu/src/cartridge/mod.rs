@@ -1,32 +1,17 @@
-use self::header::{parse_cart_header, CartridgeHeader};
+use self::header::Header;
+use self::mbc::MBC;
 
-pub mod header;
-pub mod mbc0;
+mod header;
+mod licensee;
+mod mbc;
 
-pub trait MemoryBankController {
-  fn new(rom: Vec<u8>) -> Self;
-  fn rom(&self) -> &[u8];
+const LOGO: [u8; 0x30] = [
+  0xce, 0xed, 0x66, 0x66, 0xcc, 0x0d, 0x00, 0x0b, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0c, 0x00, 0x0d,
+  0x00, 0x08, 0x11, 0x1f, 0x88, 0x89, 0x00, 0x0e, 0xdc, 0xcc, 0x6e, 0xe6, 0xdd, 0xdd, 0xd9, 0x99,
+  0xbb, 0xbb, 0x67, 0x63, 0x6e, 0x0e, 0xec, 0xcc, 0xdd, 0xdc, 0x99, 0x9f, 0xbb, 0xb9, 0x33, 0x3e,
+];
 
-  fn read_rom(&self, addr: u16) -> u8;
-  fn read_ram(&self, addr: u16) -> u8;
-
-  fn write_ram(&mut self, addr: u16, val: u8);
-
-  fn get_header(&self) -> CartridgeHeader {
-    parse_cart_header(self.rom()).unwrap().1
-  }
-}
-
-pub struct Cartridge<MBC: MemoryBankController> {
-  mbc: MBC,
-}
-
-impl<MBC: MemoryBankController> Cartridge<MBC> {
-  pub fn new(rom: Vec<u8>) -> Self {
-    Self { mbc: MBC::new(rom) }
-  }
-
-  pub fn get_header(&self) -> CartridgeHeader {
-    self.mbc.get_header()
-  }
+pub struct Cartridge {
+  header: Header,
+  body: Box<dyn MBC>,
 }
