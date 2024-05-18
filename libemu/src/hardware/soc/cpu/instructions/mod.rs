@@ -7,15 +7,26 @@ use super::{
   Cpu,
 };
 use handler::*;
+use log::trace;
 
-struct Instruction {
+#[derive(Debug, Clone, Copy)]
+pub struct Instruction {
   func: fn(&mut Cpu),
   length: u8,
   t_cycles: u8,
   description: &'static str,
 }
 
-const INSTRUCTIONS: [Instruction; 256] = [
+impl Instruction {
+  pub fn exec(mut self, cpu: &mut Cpu) -> Self {
+    // (self.func)(cpu);
+    trace!("{self:?}");
+    (self.func)(cpu);
+    self
+  }
+}
+
+pub const INSTRUCTIONS: [Instruction; 256] = [
   // 0x00
   Instruction {
     func: nop,
@@ -1671,9 +1682,8 @@ const INSTRUCTIONS: [Instruction; 256] = [
     description: "JP HL",
   },
   // 0xEA
-  // TODO: fix name
   Instruction {
-    func: ld_m_u16_a,
+    func: ld_mu16_a,
     length: 3,
     t_cycles: 16,
     description: "LD [u16], A",
@@ -1714,9 +1724,8 @@ const INSTRUCTIONS: [Instruction; 256] = [
     description: "RST 28h",
   },
   // 0xF0
-  // TODO: fix name
   Instruction {
-    func: ld_a_mff00_u8,
+    func: ld_a_mff00u8,
     length: 2,
     t_cycles: 12,
     description: "LD A, [FF00+u8]",
@@ -1785,9 +1794,8 @@ const INSTRUCTIONS: [Instruction; 256] = [
     description: "LD SP, HL",
   },
   // 0xFA
-  // TODO: fix name
   Instruction {
-    func: ld_a_m_u16,
+    func: ld_a_mu16,
     length: 3,
     t_cycles: 16,
     description: "LD A, [u16]",
@@ -1829,7 +1837,7 @@ const INSTRUCTIONS: [Instruction; 256] = [
   },
 ];
 
-const PREFIXED: [Instruction; 256] = [
+pub const PREFIXED: [Instruction; 256] = [
   // 0x00
   Instruction {
     func: rlc_b,

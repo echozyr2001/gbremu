@@ -1,5 +1,5 @@
-use generic::{bus, device::Device, memory::ram::Ram, pcb::Board, share::Shared};
-use hardware::{cartridge::Cartridge, noc::NoC, soc::SoC, Bus};
+use generic::{device::Device, memory::ram::Ram, pcb::Board, share::Shared};
+use hardware::{cartridge::Cartridge, noc::NoC, soc::SoC};
 
 pub mod boot;
 pub mod error;

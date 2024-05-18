@@ -5,7 +5,7 @@ use crate::{
       address::{Address, TryAddress},
       value::Value,
     },
-    device::{Device, Dynamic},
+    device::Device,
   },
 };
 

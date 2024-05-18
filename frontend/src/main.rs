@@ -61,7 +61,7 @@ mod sdl;
 use anyhow::Result;
 use clap::Parser;
 use cli::Args;
-use libemu::{generic::arch::address::Address, GameBoy};
+use libemu::GameBoy;
 use log::info;
 use sdl::SdlSystem;
 use sdl2::{event::Event, keyboard::Keycode};
@@ -112,22 +112,17 @@ fn main() -> Exit {
   let mut gb = GameBoy::new();
   gb.load_cart(cart);
 
-  let mut tmp = 0;
   loop {
-    if tmp >= 0xA000 {
-      println!("{:X}", tmp);
-    }
     gb.cycle();
-    tmp += 1;
   }
 
-  match run() {
-    Ok(_) => Exit::Success,
-    Err(e) => {
-      println!("{:?}", e);
-      Exit::Failure
-    },
-  }
+  // match run() {
+  //   Ok(_) => Exit::Success,
+  //   Err(e) => {
+  //     println!("{:?}", e);
+  //     Exit::Failure
+  //   },
+  // }
 }
 
 fn run() -> Result<()> {

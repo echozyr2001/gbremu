@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-use std::ops::Add;
-
 use crate::generic::{
   arch::{address::Address, value::Value},
   device::{Device, Dynamic},

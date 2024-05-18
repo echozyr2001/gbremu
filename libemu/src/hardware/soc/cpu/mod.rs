@@ -3,11 +3,11 @@
 use log::trace;
 
 use crate::{
-  generic::{arch::address::Address, device::Device, pcb::Board, share::Shared},
-  hardware::Bus,
+  generic::{arch::address::Address, share::Shared},
+  hardware::{soc::cpu::instructions::INSTRUCTIONS, Bus},
 };
 
-use self::register::Register;
+use self::{instructions::Instruction, register::Register};
 
 pub mod instructions;
 pub mod register;
@@ -98,6 +98,14 @@ impl Cpu {
     // Write byte to sp
     self.write(sp, byte);
   }
+
+  fn enable_interrupts(&mut self) {
+    self.ime = Ime::Enabled;
+  }
+
+  fn disable_interrupts(&mut self) {
+    self.ime = Ime::Disabled;
+  }
 }
 
 impl Cpu {
@@ -106,18 +114,6 @@ impl Cpu {
   }
 }
 
-// impl Board<u16, u8> for Cpu {
-//   fn connect(&self, bus: &mut Bus) {
-//     self.bus = bus.to_shared();
-//   }
-// }
-
-// impl Default for Cpu {
-//   fn default() -> Self {
-//     Self::new()
-//   }
-// }
-
 /// CPU execution stage
 #[derive(Default, Debug)]
 enum Stages {
@@ -125,7 +121,7 @@ enum Stages {
   #[default]
   Fetch,
   /// Execute the current instruction
-  Execute,
+  Execute(Instruction),
   /// Done executing the current instruction
   Done,
 }
@@ -135,6 +131,17 @@ impl Stages {
     if let Stages::Done = self {
       trace!("register:\n{}", cpu.regs);
 
+      // let int = match cpu.ime {
+      //   Ime::Enabled => {
+      //     todo!()
+      //   },
+      //   _ => todo!(),
+      // };
+
+      // if let Some(int) = int {
+      //   todo!()
+      // }
+
       self = Stages::Fetch;
     }
 
@@ -143,7 +150,17 @@ impl Stages {
       let opcode = cpu.fetch_byte();
 
       trace!("pc: {:#06x}, opcode: {:#04x}", pc, opcode);
+
+      let inst = INSTRUCTIONS[opcode as usize];
+
+      self = Stages::Execute(inst);
     }
+
+    if let Stages::Execute(inst) = self {
+      let inst = inst.exec(cpu);
+      self = Stages::Done;
+    }
+
     self
   }
 }

@@ -171,6 +171,74 @@ impl Register {
   pub fn set_l(&mut self, val: u8) {
     self.l = val;
   }
+
+  pub fn set_flags_znhc(&mut self, z: bool, n: bool, h: bool, c: bool) {
+    self.f = 0;
+    if z {
+      self.f |= 1 << 7;
+    }
+    if n {
+      self.f |= 1 << 6;
+    }
+    if h {
+      self.f |= 1 << 5;
+    }
+    if c {
+      self.f |= 1 << 4;
+    }
+  }
+
+  pub fn get_flags_c(&self) -> bool {
+    self.f & 0b0001_0000 != 0
+  }
+
+  pub fn set_flags_c(&mut self, val: bool) {
+    if val {
+      self.f |= 0b0001_0000;
+    } else {
+      self.f &= 0b1110_1111;
+    }
+  }
+
+  pub fn get_flags_z(&self) -> bool {
+    self.f & 0b1000_0000 != 0
+  }
+
+  pub fn set_flags_z(&mut self, val: bool) {
+    if val {
+      self.f |= 0b1000_0000;
+    } else {
+      self.f &= 0b0111_1111;
+    }
+  }
+
+  pub fn get_flags_n(&self) -> bool {
+    self.f & 0b0100_0000 != 0
+  }
+
+  pub fn set_flags_n(&mut self, val: bool) {
+    if val {
+      self.f |= 0b0100_0000;
+    } else {
+      self.f &= 0b1011_1111;
+    }
+  }
+
+  pub fn get_flags_h(&self) -> bool {
+    self.f & 0b0010_0000 != 0
+  }
+
+  pub fn set_flags_h(&mut self, val: bool) {
+    if val {
+      self.f |= 0b0010_0000;
+    } else {
+      self.f &= 0b1101_1111;
+    }
+  }
+
+  pub fn inc_pc(&mut self, val: u16) {
+    self.pc = self.pc.wrapping_add(val);
+  }
 }
 
 pub enum Flags {
