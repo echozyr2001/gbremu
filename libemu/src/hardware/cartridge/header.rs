@@ -1,8 +1,16 @@
+//! Game cartridge header.
+//!
+//! In the ROM at the address range `0x0100..0x0150` is the header,
+//! which encodes both physical attributes describing the hardware of the
+//! cartridge, flags describing console support, and characteristics of the
+//! software.
 use log::warn;
 
 use crate::error::CartError;
 
 use super::{licensee::Licensee, mbc::Kind, LOGO};
+
+#[derive(Debug)]
 pub struct Header {
   /// Equality with boot ROM's Nintendo logo.
   pub logo: bool,
@@ -32,6 +40,10 @@ pub struct Header {
   pub gchk: u16,
 }
 
+/// Cartridge header.
+///
+/// Information about the ROM and the cartridge containing it. Stored in the
+/// byte range `[0x100, 0x150)`.
 impl Header {
   pub fn new(rom: &[u8]) -> Result<Self, CartError> {
     // slice the header
@@ -87,14 +99,12 @@ impl Header {
     let cart: Kind = header[0x47].try_into()?;
 
     // parse ROM size
-    // TODO: support Error
     let romsz = match header[0x48] {
       byte @ 0x00..=0x08 => Ok(0x8000 << byte),
       byte => Err(CartError::Rom(byte)),
     }?;
 
     // parse RAM size
-    // TODO: change RAM parser
     let ramsz = match header[0x49] {
       0x00 => Ok(0),
       0x01 => Ok(0x800),
@@ -137,10 +147,6 @@ impl Header {
       .wrapping_sub(rom[0x14E] as u16)
       .wrapping_sub(rom[0x14F] as u16);
     if chk != gchk {
-      // return Err(CartError::GlobalCheck {
-      //   found: chk,
-      //   expected: gchk,
-      // });
       // Gameboy doesn't verify this checksum
       warn!(
         "Global checksum mismatch: found {:#04x}, expected {:#04x}",

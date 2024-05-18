@@ -1,13 +1,15 @@
+#![allow(dead_code)]
+
 mod handler;
 
 use super::{
   register::{Register16, Register8},
-  CPU,
+  Cpu,
 };
 use handler::*;
 
 struct Instruction {
-  func: fn(&mut CPU),
+  func: fn(&mut Cpu),
   length: u8,
   t_cycles: u8,
   description: &'static str,

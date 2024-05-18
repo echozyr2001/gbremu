@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use crate::error::{CartError, LicenseeError};
 
+#[derive(Debug)]
 pub enum Licensee {
   New(NewLicensee),
   Old(OldLicensee),
@@ -32,6 +33,7 @@ impl TryFrom<u8> for Licensee {
   }
 }
 
+#[derive(Debug)]
 pub enum NewLicensee {
   None,                // 00
   NintendoRD1,         // 01
@@ -225,6 +227,8 @@ impl Display for NewLicensee {
     }
   }
 }
+
+#[derive(Debug)]
 pub enum OldLicensee {
   None,             // 0x00
   Nintendo,         // 0x01 0x31

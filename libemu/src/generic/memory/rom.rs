@@ -5,17 +5,18 @@ use crate::{
       address::{Address, TryAddress},
       value::Value,
     },
-    device::Device,
+    device::{Device, Dynamic},
   },
 };
 
 /// Read Only Memory.
-#[derive(Debug)]
-pub struct ROM<V, const N: usize>(Box<[V; N]>)
+// TODO: 1 chack clone
+#[derive(Debug, Clone)]
+pub struct Rom<V, const N: usize>(Box<[V; N]>)
 where
   V: Value;
 
-impl<V, const N: usize> ROM<V, N>
+impl<V, const N: usize> Rom<V, N>
 where
   V: Value,
 {
@@ -25,7 +26,7 @@ where
   }
 }
 
-impl<V, const N: usize> Default for ROM<V, N>
+impl<V, const N: usize> Default for Rom<V, N>
 where
   V: Value,
 {
@@ -39,7 +40,7 @@ where
   }
 }
 
-impl<V, const N: usize> From<&[V; N]> for ROM<V, N>
+impl<V, const N: usize> From<&[V; N]> for Rom<V, N>
 where
   V: Value,
 {
@@ -48,7 +49,7 @@ where
   }
 }
 
-impl<Idx, V, const N: usize> Device<Idx, V> for ROM<V, N>
+impl<Idx, V, const N: usize> Device<Idx, V> for Rom<V, N>
 where
   Idx: Value,
   V: Value,
@@ -56,7 +57,7 @@ where
 {
 }
 
-impl<Idx, V, const N: usize> Address<Idx, V> for ROM<V, N>
+impl<Idx, V, const N: usize> Address<Idx, V> for Rom<V, N>
 where
   Idx: Value,
   V: Value,
@@ -71,7 +72,7 @@ where
   }
 }
 
-impl<Idx, V, const N: usize> TryAddress<Idx, V> for ROM<V, N>
+impl<Idx, V, const N: usize> TryAddress<Idx, V> for Rom<V, N>
 where
   Idx: Value,
   V: Value,

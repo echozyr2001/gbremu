@@ -11,11 +11,11 @@ use crate::{
 
 /// Random Access Memory.
 #[derive(Debug)]
-pub struct RAM<V, const N: usize>(Box<[V; N]>)
+pub struct Ram<V, const N: usize>(Box<[V; N]>)
 where
   V: Value;
 
-impl<V, const N: usize> RAM<V, N>
+impl<V, const N: usize> Ram<V, N>
 where
   V: Value,
 {
@@ -25,7 +25,16 @@ where
   }
 }
 
-impl<V, const N: usize> Default for RAM<V, N>
+impl<V, const N: usize> From<&[V; N]> for Ram<V, N>
+where
+  V: Value,
+{
+  fn from(arr: &[V; N]) -> Self {
+    Self(Vec::from(&arr[..]).into_boxed_slice().try_into().unwrap())
+  }
+}
+
+impl<V, const N: usize> Default for Ram<V, N>
 where
   V: Value,
 {
@@ -39,16 +48,7 @@ where
   }
 }
 
-impl<V, const N: usize> From<&[V; N]> for RAM<V, N>
-where
-  V: Value,
-{
-  fn from(arr: &[V; N]) -> Self {
-    Self(Vec::from(&arr[..]).into_boxed_slice().try_into().unwrap())
-  }
-}
-
-impl<Idx, V, const N: usize> Device<Idx, V> for RAM<V, N>
+impl<Idx, V, const N: usize> Device<Idx, V> for Ram<V, N>
 where
   Idx: Value,
   V: Value,
@@ -56,7 +56,7 @@ where
 {
 }
 
-impl<Idx, V, const N: usize> Address<Idx, V> for RAM<V, N>
+impl<Idx, V, const N: usize> Address<Idx, V> for Ram<V, N>
 where
   Idx: Value,
   V: Value,
@@ -71,7 +71,7 @@ where
   }
 }
 
-impl<Idx, V, const N: usize> TryAddress<Idx, V> for RAM<V, N>
+impl<Idx, V, const N: usize> TryAddress<Idx, V> for Ram<V, N>
 where
   Idx: Value,
   V: Value,

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 // -------------
 // | A   Flags |  ---> Program Status Word
 // | B       C |  ---> B
@@ -6,6 +8,7 @@
 // |    SP     |  ---> Stack Pointer
 // |    PC     |  ---> Program Counter
 /// -------------
+#[derive(Default, Debug)]
 pub struct Register {
   a: u8,
   f: u8,
@@ -19,7 +22,40 @@ pub struct Register {
   pc: u16,
 }
 
+impl Display for Register {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    writeln!(f, "┌───┬────┬───┬────┐")?;
+    writeln!(f, "│ A │ {:02x} │ F │ {:02x} │", self.get_a(), self.get_f())?;
+    writeln!(f, "├───┼────┼───┼────┤")?;
+    writeln!(f, "│ B │ {:02x} │ C │ {:02x} │", self.get_b(), self.get_c())?;
+    writeln!(f, "├───┼────┼───┼────┤")?;
+    writeln!(f, "│ D │ {:02x} │ E │ {:02x} │", self.get_d(), self.get_e())?;
+    writeln!(f, "├───┼────┼───┼────┤")?;
+    writeln!(f, "│ H │ {:02x} │ L │ {:02x} │", self.get_h(), self.get_l())?;
+    writeln!(f, "├───┴────┼───┴────┤")?;
+    writeln!(f, "│   SP   │  {:04x}  │", self.get_sp())?;
+    writeln!(f, "├────────┼────────┤")?;
+    writeln!(f, "│   PC   │  {:04x}  │", self.get_pc())?;
+    write!(f, "└────────┴────────┘")
+  }
+}
+
 impl Register {
+  pub fn new() -> Self {
+    Self {
+      a: 0x01,
+      f: 0xB0,
+      b: 0x00,
+      c: 0x13,
+      d: 0x00,
+      e: 0xD8,
+      h: 0x01,
+      l: 0x4D,
+      sp: 0xFFFE,
+      pc: 0x0100,
+    }
+  }
+
   pub fn get_af(&self) -> u16 {
     (self.a as u16) << 8 | self.f as u16
   }
