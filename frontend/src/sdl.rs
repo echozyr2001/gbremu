@@ -25,8 +25,8 @@ impl SdlSystem {
     width: u32,
     height: u32,
     scale: f32,
-    accelerated: bool,
-    vsync: bool,
+    // accelerated: bool,
+    // vsync: bool,
   ) -> Self {
     // initializes the SDL sub-system, making it ready to be
     // used for display of graphics and audio
@@ -56,12 +56,12 @@ impl SdlSystem {
     // creates a canvas (according to spec) to be used in the drawing
     // then clears it so that is can be presented empty initially
     let mut canvas_builder = window.into_canvas();
-    if accelerated {
-      canvas_builder = canvas_builder.accelerated();
-    }
-    if vsync {
-      canvas_builder = canvas_builder.present_vsync();
-    }
+    // if accelerated {
+    //   canvas_builder = canvas_builder.accelerated();
+    // }
+    // if vsync {
+    //   canvas_builder = canvas_builder.present_vsync();
+    // }
     let mut canvas = canvas_builder.build().unwrap();
     canvas.set_logical_size(width, height).unwrap();
     canvas.clear();

@@ -6,6 +6,7 @@ use super::noc::NoC;
 
 mod boot;
 mod cpu;
+pub mod ppu;
 
 #[derive(Debug)]
 pub struct SoC {

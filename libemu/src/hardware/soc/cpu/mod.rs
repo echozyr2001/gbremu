@@ -4,7 +4,7 @@ use log::trace;
 
 use crate::{
   generic::{arch::address::Address, share::Shared},
-  hardware::{soc::cpu::instructions::INSTRUCTIONS, Bus},
+  hardware::{pic::Pic, soc::cpu::instructions::INSTRUCTIONS, Bus},
 };
 
 use self::{instructions::Instruction, register::Register};
@@ -38,6 +38,7 @@ impl Cpu {
 
       regs: Register::default(),
       bus,
+      // pic,
     }
   }
 
@@ -132,14 +133,12 @@ impl Stages {
       trace!("register:\n{}", cpu.regs);
 
       // let int = match cpu.ime {
-      //   Ime::Enabled => {
-      //     todo!()
-      //   },
-      //   _ => todo!(),
+      //   Ime::Enabled => cpu.pic.borrow().int(),
+      //   _ => None,
       // };
 
       // if let Some(int) = int {
-      //   todo!()
+      //   cpu.pic.borrow_mut().ack(int);
       // }
 
       self = Stages::Fetch;

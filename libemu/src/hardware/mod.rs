@@ -2,6 +2,7 @@
 
 pub mod cartridge;
 pub mod noc;
+pub mod pic;
 pub mod soc;
 
 pub type Bus = crate::generic::bus::Bus<u16, u8>;
