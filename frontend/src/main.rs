@@ -3,7 +3,7 @@ mod sdl;
 use clap::Parser;
 use libemu::GameBoy;
 use sdl::SdlSystem;
-use sdl2::{event::Event, keyboard::Keycode, Sdl};
+use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum, Sdl};
 use std::{env::set_var, path::Path};
 
 const DEFAULT_ROM_PATH: &str = "/Users/echo/dev/gbremu/roms/pocket.gb";
@@ -39,6 +39,9 @@ struct Emulator {
   sdl: Option<SdlSystem>,
   title: String,
 
+  next_tick_time: f32,
+  next_tick_time_i: u32,
+
   cart_path: String,
 }
 
@@ -48,6 +51,9 @@ impl Emulator {
       system,
       sdl: None,
       title: String::from("GameBoy Emulator"),
+
+      next_tick_time: 0.0,
+      next_tick_time_i: 0,
 
       cart_path: String::from("invalid"),
     }
@@ -86,6 +92,19 @@ impl Emulator {
   }
 
   fn run(&mut self) {
+    let (width, height) = (self.system.display_width(), self.system.display_height());
+
+    self.sdl.as_mut().unwrap().canvas.present();
+
+    let texture_creator = self.sdl.as_mut().unwrap().canvas.texture_creator();
+
+    let mut texture = texture_creator
+      .create_texture_streaming(PixelFormatEnum::RGB24, width as u32, height as u32)
+      .unwrap();
+
+    // 上一个时钟周期中未完成的周期数
+    let mut pending_cycles = 0u32;
+
     'main: loop {
       while let Some(event) = self.sdl.as_mut().unwrap().event_pump.poll_event() {
         match event {
@@ -104,6 +123,27 @@ impl Emulator {
           _ => {},
         }
       }
+
+      let current_time = self.sdl.as_mut().unwrap().timer_subsystem.ticks();
+
+      if current_time >= self.next_tick_time_i {
+        let counter_cycles = pending_cycles;
+        // let mut last_frame = self.system.ppu_frame();
+        let mut frame_dirty = false;
+
+        // let cycle_limit =
+      }
+
+      let current_time = self.sdl.as_mut().unwrap().timer_subsystem.ticks();
+
+      let pending_time = self.next_tick_time_i.saturating_sub(current_time);
+
+      self
+        .sdl
+        .as_mut()
+        .unwrap()
+        .timer_subsystem
+        .delay(pending_time);
     }
   }
 }
