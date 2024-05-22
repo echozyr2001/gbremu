@@ -1,10 +1,10 @@
 mod sdl;
 
 use clap::Parser;
-use libemu::GameBoy;
+use libemu::{GameBoy, CPU_FREQ, VISUAL_FREQ};
 use sdl::SdlSystem;
 use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum, Sdl};
-use std::{env::set_var, path::Path};
+use std::{cmp::max, env::set_var, path::Path};
 
 const DEFAULT_ROM_PATH: &str = "/Users/echo/dev/gbremu/roms/pocket.gb";
 const SCREEN_SCALE: f32 = 3.0;
@@ -39,6 +39,9 @@ struct Emulator {
   sdl: Option<SdlSystem>,
   title: String,
 
+  logic_frequency: u32,
+  visual_frequency: f32,
+
   next_tick_time: f32,
   next_tick_time_i: u32,
 
@@ -51,6 +54,9 @@ impl Emulator {
       system,
       sdl: None,
       title: String::from("GameBoy Emulator"),
+
+      logic_frequency: CPU_FREQ,
+      visual_frequency: VISUAL_FREQ,
 
       next_tick_time: 0.0,
       next_tick_time_i: 0,
@@ -127,11 +133,53 @@ impl Emulator {
       let current_time = self.sdl.as_mut().unwrap().timer_subsystem.ticks();
 
       if current_time >= self.next_tick_time_i {
-        let counter_cycles = pending_cycles;
-        // let mut last_frame = self.system.ppu_frame();
+        let mut counter_cycles = pending_cycles;
+        let mut last_frame = self.system.ppu_frame();
         let mut frame_dirty = false;
 
-        // let cycle_limit =
+        let cycle_limit = (self.logic_frequency as f32 / self.visual_frequency).round() as u32;
+
+        loop {
+          if counter_cycles >= cycle_limit {
+            pending_cycles = counter_cycles - cycle_limit;
+            break;
+          }
+
+          counter_cycles += self.system.cycle() as u32;
+
+          if self.system.ppu_frame() != last_frame {
+            let frame_buffer = self.system.frame_buffer().as_ref();
+            texture.update(None, frame_buffer, width * 3).unwrap();
+
+            last_frame = self.system.ppu_frame();
+            frame_dirty = true;
+          }
+        }
+
+        if frame_dirty {
+          self.sdl.as_mut().unwrap().canvas.clear();
+
+          self
+            .sdl
+            .as_mut()
+            .unwrap()
+            .canvas
+            .copy(&texture, None, None)
+            .unwrap();
+
+          self.sdl.as_mut().unwrap().canvas.present();
+        }
+
+        if self.next_tick_time == 0.0 {
+          self.next_tick_time = current_time as f32;
+        }
+        let mut ticks = ((current_time as f32 - self.next_tick_time)
+          / ((1.0 / self.visual_frequency) * 1000.0))
+          .ceil() as u8;
+        ticks = max(ticks, 1);
+
+        self.next_tick_time += (1000.0 / self.visual_frequency) * ticks as f32;
+        self.next_tick_time_i = self.next_tick_time.ceil() as u32;
       }
 
       let current_time = self.sdl.as_mut().unwrap().timer_subsystem.ticks();

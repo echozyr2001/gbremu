@@ -5,7 +5,7 @@ use hardware::{
   cartridge::Cartridge,
   noc::NoC,
   soc::{
-    ppu::{DISPLAY_HEIGHT, DISPLAY_WIDTH},
+    ppu::{DISPLAY_HEIGHT, DISPLAY_WIDTH, FRAME_BUFFER_SIZE},
     SoC,
   },
 };
@@ -18,7 +18,10 @@ pub mod hardware;
 type Wram = Ram<u8, 0x2000>;
 type Vram = Ram<u8, 0x2000>;
 
-#[derive(Debug)]
+pub const CPU_FREQ: u32 = 4194304;
+pub const VISUAL_FREQ: f32 = 59.7275;
+
+// #[derive(Debug)]
 pub struct GameBoy {
   // clock: u128,
   pub soc: SoC,
@@ -39,7 +42,6 @@ impl GameBoy {
   }
 
   pub fn setup(self) -> Self {
-    // TODO: 1. Load boot rom
     self.connect();
     self
   }
@@ -78,6 +80,8 @@ impl GameBoy {
     bus.map(0x8000..=0x9FFF, vram.clone().to_dynamic());
     bus.map(0xC000..=0xDFFF, wram.clone().to_dynamic());
     bus.map(0xE000..=0xFDFF, echo.clone().to_dynamic());
+
+    self.soc.connect(bus);
   }
 
   pub fn load_dmg(&mut self) {
@@ -97,6 +101,14 @@ impl GameBoy {
   pub fn display_height(&self) -> usize {
     DISPLAY_HEIGHT
   }
+
+  pub fn ppu_frame(&mut self) -> u16 {
+    self.soc.ppu.frame_index()
+  }
+
+  pub fn frame_buffer(&mut self) -> &[u8; FRAME_BUFFER_SIZE] {
+    self.soc.ppu.frame_buffer()
+  }
 }
 
 impl Default for GameBoy {
@@ -113,7 +125,18 @@ impl Default for GameBoy {
 }
 
 impl GameBoy {
-  pub fn cycle(&mut self) {
+  pub fn cycle(&mut self) -> u16 {
     self.soc.cpu.cycle();
+    // let cycles_n = cycles;
+    self.cycle_devices(4);
+    4
+  }
+
+  pub fn cycle_devices(&mut self, cycles: u16) {
+    self.ppu_cycle(cycles);
+  }
+
+  pub fn ppu_cycle(&mut self, cycles: u16) {
+    self.soc.ppu.cycle(cycles);
   }
 }

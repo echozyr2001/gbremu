@@ -10,6 +10,7 @@ use super::{
   },
   device::Device,
   pcb::Board,
+  reg::Cell,
 };
 
 /// Heap-allocated multi-access reference.
@@ -128,6 +129,34 @@ where
 {
   fn connect(&self, bus: &mut super::bus::Bus<Idx, V>) {
     self.borrow().connect(bus);
+  }
+}
+
+impl<V, T> Cell<V> for Inner<T>
+where
+  T: Cell<V> + ?Sized,
+  V: Value,
+{
+  fn load(&self) -> V {
+    self.borrow().load()
+  }
+
+  fn store(&mut self, value: V) {
+    self.borrow_mut().store(value)
+  }
+}
+
+impl<V, T> Cell<V> for Shared<T>
+where
+  T: Cell<V> + ?Sized,
+  V: Value,
+{
+  fn load(&self) -> V {
+    self.0.load()
+  }
+
+  fn store(&mut self, value: V) {
+    self.0.store(value)
   }
 }
 
