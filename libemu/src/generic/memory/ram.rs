@@ -1,97 +1,65 @@
-use crate::{
-  error::MemoryError,
-  generic::{
-    arch::{
-      address::{Address, TryAddress},
-      value::Value,
-    },
-    device::Device,
-  },
+use crate::generic::{
+  address::{Address, TryAddress},
+  device::Device,
 };
 
-/// Random Access Memory.
-#[derive(Debug)]
-pub struct Ram<V, const N: usize>(Box<[V; N]>)
-where
-  V: Value;
+use super::Error;
 
-impl<V, const N: usize> Ram<V, N>
-where
-  V: Value,
-{
-  /// Constructs a new and empty [`RAM`] resource.
+#[derive(Default)]
+pub struct Ram(Vec<u8>);
+
+impl Ram {
   pub fn new() -> Self {
     Self::default()
   }
-}
 
-impl<V, const N: usize> From<&[V; N]> for Ram<V, N>
-where
-  V: Value,
-{
-  fn from(arr: &[V; N]) -> Self {
-    Self(Vec::from(&arr[..]).into_boxed_slice().try_into().unwrap())
+  pub fn inner(&self) -> &[u8] {
+    &self.0
+  }
+
+  pub fn set_data(&mut self, data: &[u8]) {
+    self.0 = data.to_vec();
+  }
+
+  pub fn reset(&mut self) {
+    self.0.clear();
   }
 }
 
-impl<V, const N: usize> Default for Ram<V, N>
-where
-  V: Value,
-{
-  fn default() -> Self {
-    Self(
-      vec![Default::default(); N]
-        .into_boxed_slice()
-        .try_into()
-        .unwrap(),
-    )
+impl From<&[u8]> for Ram {
+  fn from(arr: &[u8]) -> Self {
+    Self(arr.to_vec())
   }
 }
 
-impl<Idx, V, const N: usize> Device<Idx, V> for Ram<V, N>
-where
-  Idx: Value,
-  V: Value,
-  usize: From<Idx>,
-{
-}
+impl Device for Ram {}
 
-impl<Idx, V, const N: usize> Address<Idx, V> for Ram<V, N>
-where
-  Idx: Value,
-  V: Value,
-  usize: From<Idx>,
-{
-  fn read(&self, idx: Idx) -> V {
-    self.try_read(idx).unwrap()
+impl Address for Ram {
+  fn read(&self, addr: u16) -> u8 {
+    self.try_read(addr).unwrap()
   }
 
-  fn write(&mut self, idx: Idx, val: V) {
-    self.try_write(idx, val).unwrap()
+  fn write(&mut self, addr: u16, value: u8) {
+    self.try_write(addr, value).unwrap()
   }
 }
 
-impl<Idx, V, const N: usize> TryAddress<Idx, V> for Ram<V, N>
-where
-  Idx: Value,
-  V: Value,
-  usize: From<Idx>,
-{
-  type Error = MemoryError<Idx>;
+impl TryAddress for Ram {
+  type Error = Error;
 
-  fn try_read(&self, idx: Idx) -> Result<V, Self::Error> {
+  fn try_read(&self, addr: u16) -> Result<u8, Self::Error> {
     self
       .0
-      .get(usize::from(idx))
+      .get(usize::from(addr))
       .copied()
-      .ok_or(MemoryError::Bounds(idx))
+      .ok_or(Error::InvalidAddress(addr))
   }
 
-  fn try_write(&mut self, idx: Idx, val: V) -> Result<(), Self::Error> {
+  fn try_write(&mut self, addr: u16, value: u8) -> Result<(), Self::Error> {
     self
       .0
-      .get_mut(usize::from(idx))
-      .map(|it| *it = val)
-      .ok_or(MemoryError::Bounds(idx))
+      .get_mut(usize::from(addr))
+      .map(|it| *it = value)
+      .ok_or(Error::InvalidAddress(addr))
   }
 }

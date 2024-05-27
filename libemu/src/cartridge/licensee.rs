@@ -1,11 +1,14 @@
-use std::fmt::Display;
+use std::{convert::TryFrom, fmt::Display};
 
-use crate::error::{CartError, LicenseeError};
+use log::warn;
+
+use crate::error::Error;
 
 #[derive(Debug)]
 pub enum Licensee {
   New(NewLicensee),
   Old(OldLicensee),
+  None,
 }
 
 impl Display for Licensee {
@@ -13,12 +16,13 @@ impl Display for Licensee {
     match self {
       Self::New(lic) => write!(f, "{}", lic),
       Self::Old(lic) => write!(f, "{}", lic),
+      _ => write!(f, "None"),
     }
   }
 }
 
 impl TryFrom<u16> for Licensee {
-  type Error = CartError;
+  type Error = Error;
 
   fn try_from(value: u16) -> Result<Self, Self::Error> {
     Ok(Self::New(NewLicensee::try_from(value)?))
@@ -26,7 +30,7 @@ impl TryFrom<u16> for Licensee {
 }
 
 impl TryFrom<u8> for Licensee {
-  type Error = CartError;
+  type Error = Error;
 
   fn try_from(value: u8) -> Result<Self, Self::Error> {
     Ok(Self::Old(OldLicensee::try_from(value)?))
@@ -96,7 +100,7 @@ pub enum NewLicensee {
 }
 
 impl TryFrom<u16> for NewLicensee {
-  type Error = CartError;
+  type Error = Error;
 
   fn try_from(value: u16) -> Result<Self, Self::Error> {
     match value {
@@ -158,7 +162,10 @@ impl TryFrom<u16> for NewLicensee {
       0x3739 => Ok(Self::Kaneko),
       0x3939 => Ok(Self::PackInSoft),
       0x3441 => Ok(Self::KonamiYuGiOh),
-      word => Err(CartError::Licensee(LicenseeError::New(word))),
+      word => {
+        warn!("Invalid licensee: {:#06x}", word);
+        Ok(Self::None)
+      },
     }
   }
 }
@@ -356,7 +363,7 @@ pub enum OldLicensee {
 }
 
 impl TryFrom<u8> for OldLicensee {
-  type Error = CartError;
+  type Error = Error;
 
   fn try_from(value: u8) -> Result<Self, Self::Error> {
     match value {
@@ -482,7 +489,10 @@ impl TryFrom<u8> for OldLicensee {
       0xEE => Ok(Self::Igs),
       0xF0 => Ok(Self::AWave),
       0xF3 => Ok(Self::ExtremeEntertainment),
-      byte => Err(CartError::Licensee(LicenseeError::Old(byte))),
+      byte => {
+        warn!("Invalid licensee: {:#04x}", byte);
+        Ok(Self::None)
+      },
     }
   }
 }

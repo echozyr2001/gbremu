@@ -1,19 +1,12 @@
-//! PPU (Picture Processing Unit) functions and structures.
 mod object;
 pub mod palette;
 mod tile;
 
 use std::{borrow::BorrowMut, cmp::max};
 
-use crate::{
-  generic::{
-    device::Device,
-    pcb::Board,
-    reg::{Cell, Register},
-    share::Shared,
-  },
-  hardware::Bus,
-};
+use log::warn;
+
+use crate::generic::{address::Address, device::Device};
 
 use self::{object::ObjectData, tile::Tile};
 
@@ -43,47 +36,18 @@ pub const PALETTE_COLORS: Palette = [[255, 255, 255], [192, 192, 192], [96, 96, 
 pub type Pixel = [u8; RGB_SIZE];
 pub type Palette = [Pixel; PALETTE_SIZE];
 
-#[derive(Default)]
 pub struct PpuRegisters {
-  pub lcdc: Shared<Register<u8>>,
-  pub stat: Shared<Register<u8>>,
-  pub scy: Shared<Register<u8>>,
-  pub scx: Shared<Register<u8>>,
-  pub ly: Shared<Register<u8>>,
-  pub lyc: Shared<Register<u8>>,
-  pub bgp: Shared<Register<u8>>,
-  pub obp0: Shared<Register<u8>>,
-  pub obp1: Shared<Register<u8>>,
-  pub wy: Shared<Register<u8>>,
-  pub wx: Shared<Register<u8>>,
-}
-
-impl Board<u16, u8> for PpuRegisters {
-  fn connect(&self, bus: &mut Bus) {
-    let lcdc = self.lcdc.clone().to_dynamic();
-    let stat = self.stat.clone().to_dynamic();
-    let scy = self.scy.clone().to_dynamic();
-    let scx = self.scx.clone().to_dynamic();
-    let ly = self.ly.clone().to_dynamic();
-    let lyc = self.lyc.clone().to_dynamic();
-    let bgp = self.bgp.clone().to_dynamic();
-    let obp0 = self.obp0.clone().to_dynamic();
-    let obp1 = self.obp1.clone().to_dynamic();
-    let wy = self.wy.clone().to_dynamic();
-    let wx = self.wx.clone().to_dynamic();
-
-    bus.map(0xFF40..=0xFF40, lcdc);
-    bus.map(0xFF41..=0xFF41, stat);
-    bus.map(0xFF42..=0xFF42, scy);
-    bus.map(0xFF43..=0xFF43, scx);
-    bus.map(0xFF44..=0xFF44, ly);
-    bus.map(0xFF45..=0xFF45, lyc);
-    bus.map(0xFF47..=0xFF47, bgp);
-    bus.map(0xFF48..=0xFF48, obp0);
-    bus.map(0xFF49..=0xFF49, obp1);
-    bus.map(0xFF4A..=0xFF4A, wy);
-    bus.map(0xFF4B..=0xFF4B, wx);
-  }
+  pub lcdc: u8,
+  pub stat: u8,
+  pub bgp: u8,
+  pub obp0: u8,
+  pub obp1: u8,
+  pub scy: u8,
+  pub scx: u8,
+  pub wy: u8,
+  pub wx: u8,
+  pub ly: u8,
+  pub lyc: u8,
 }
 
 pub struct Ppu {
@@ -91,7 +55,6 @@ pub struct Ppu {
   frame_buffer: Box<[u8; FRAME_BUFFER_SIZE]>,
 
   vram: [u8; VRAM_SIZE],
-  hram: [u8; HRAM_SIZE],
   oam: [u8; OAM_SIZE],
 
   tiles: [Tile; TILE_COUNT],
@@ -111,12 +74,6 @@ pub struct Ppu {
   int_stat: bool,
 }
 
-impl Board<u16, u8> for Ppu {
-  fn connect(&self, bus: &mut Bus) {
-    self.regs.connect(bus);
-  }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PpuMode {
   HBlank = 0,
@@ -131,14 +88,25 @@ impl Ppu {
       shade_buffer: Box::new([0u8; COLOR_BUFFER_SIZE]),
       frame_buffer: Box::new([0u8; FRAME_BUFFER_SIZE]),
       vram: [0u8; VRAM_SIZE],
-      hram: [0u8; HRAM_SIZE],
       oam: [0u8; OAM_SIZE],
       tiles: [Tile { buffer: [0u8; 64] }; TILE_COUNT],
       obj_data: [ObjectData::default(); OBJ_COUNT],
       palette_colors: PALETTE_COLORS,
       palette_obj_0: [[0u8; RGB_SIZE]; PALETTE_SIZE],
       palette_obj_1: [[0u8; RGB_SIZE]; PALETTE_SIZE],
-      regs: PpuRegisters::default(),
+      regs: PpuRegisters {
+        lcdc: 0x0,
+        stat: 0x0,
+        bgp: 0x0,
+        obp0: 0x0,
+        obp1: 0x0,
+        scy: 0x0,
+        scx: 0x0,
+        wy: 0x0,
+        wx: 0x0,
+        ly: 0x0,
+        lyc: 0x0,
+      },
       mode: PpuMode::OamRead,
       dot: 0,
       window_counter: 0x0,
@@ -153,12 +121,19 @@ impl Ppu {
     self.shade_buffer = Box::new([0u8; SHADE_BUFFER_SIZE]);
     self.frame_buffer = Box::new([0u8; FRAME_BUFFER_SIZE]);
     self.vram = [0u8; VRAM_SIZE];
-    self.hram = [0u8; HRAM_SIZE];
     self.tiles = [Tile { buffer: [0u8; 64] }; TILE_COUNT];
     self.obj_data = [ObjectData::default(); OBJ_COUNT];
     self.palette_obj_0 = [[0u8; RGB_SIZE]; PALETTE_SIZE];
     self.palette_obj_1 = [[0u8; RGB_SIZE]; PALETTE_SIZE];
-    self.regs = PpuRegisters::default();
+    self.regs.lcdc = 0x0;
+    self.regs.bgp = 0x0;
+    self.regs.obp0 = 0x0;
+    self.regs.obp1 = 0x0;
+    self.regs.scy = 0x0;
+    self.regs.scx = 0x0;
+    self.regs.ly = 0x0;
+    self.regs.lyc = 0x0;
+    self.regs.stat = 0x0;
     self.mode = PpuMode::OamRead;
     self.dot = 0;
     self.window_counter = 0;
@@ -168,54 +143,54 @@ impl Ppu {
   }
 
   fn lcd_enable(&self) -> bool {
-    self.regs.lcdc.load() & 0x80 == 0x80
+    self.regs.lcdc & 0x80 == 0x80
   }
 
   fn window_map(&self) -> bool {
-    self.regs.lcdc.load() & 0x40 == 0x40
+    self.regs.lcdc & 0x40 == 0x40
   }
 
   fn window_enable(&self) -> bool {
-    self.regs.lcdc.load() & 0x20 == 0x20
+    self.regs.lcdc & 0x20 == 0x20
   }
 
   fn bg_tile(&self) -> bool {
-    self.regs.lcdc.load() & 0x10 == 0x10
+    self.regs.lcdc & 0x10 == 0x10
   }
 
   fn bg_map(&self) -> bool {
-    self.regs.lcdc.load() & 0x08 == 0x08
+    self.regs.lcdc & 0x08 == 0x08
   }
 
   fn obj_size(&self) -> bool {
-    self.regs.lcdc.load() & 0x04 == 0x04
+    self.regs.lcdc & 0x04 == 0x04
   }
 
   fn obj_enable(&self) -> bool {
-    self.regs.lcdc.load() & 0x02 == 0x02
+    self.regs.lcdc & 0x02 == 0x02
   }
 
   fn bg_enable(&self) -> bool {
-    self.regs.lcdc.load() & 0x01 == 0x01
+    self.regs.lcdc & 0x01 == 0x01
   }
 
   fn stat_lyc(&self) -> bool {
-    self.regs.stat.load() & 0x40 == 0x40
+    self.regs.stat & 0x40 == 0x40
   }
 
   fn stat_oam(&self) -> bool {
-    self.regs.stat.load() & 0x20 == 0x20
+    self.regs.stat & 0x20 == 0x20
   }
 
   fn stat_vblank(&self) -> bool {
-    self.regs.stat.load() & 0x10 == 0x10
+    self.regs.stat & 0x10 == 0x10
   }
 
   fn stat_hblank(&self) -> bool {
-    self.regs.stat.load() & 0x08 == 0x08
+    self.regs.stat & 0x08 == 0x08
   }
 
-  pub fn cycle(&mut self, cycles: u16) {
+  pub fn clock(&mut self, cycles: u16) {
     // in case the LCD is currently off then we skip the current
     // clock operation the PPU should not work
     if !self.lcd_enable() {
@@ -244,16 +219,16 @@ impl Ppu {
       PpuMode::HBlank => {
         if self.dot >= 204 {
           if self.window_enable()
-            && self.regs.wx.load() as i16 - 7 < DISPLAY_WIDTH as i16
-            && self.regs.wy.load() < DISPLAY_HEIGHT as u8
-            && self.regs.ly.load() >= self.regs.wy.load()
+            && self.regs.wx as i16 - 7 < DISPLAY_WIDTH as i16
+            && self.regs.wy < DISPLAY_HEIGHT as u8
+            && self.regs.ly >= self.regs.wy
           {
             self.window_counter += 1;
           }
 
-          self.regs.ly.store(self.regs.ly.load() + 1);
+          self.regs.ly += 1;
 
-          if self.regs.ly.load() == 144 {
+          if self.regs.ly == 144 {
             self.int_vblank = true;
             self.mode = PpuMode::VBlank;
           } else {
@@ -266,11 +241,11 @@ impl Ppu {
       },
       PpuMode::VBlank => {
         if self.dot >= 456 {
-          self.regs.ly.store(self.regs.ly.load() + 1);
+          self.regs.ly += 1;
 
-          if self.regs.ly.load() == 154 {
+          if self.regs.ly == 154 {
             self.mode = PpuMode::OamRead;
-            self.regs.ly.store(0);
+            self.regs.ly = 0;
             self.window_counter = 0;
             self.frame_index = self.frame_index.wrapping_add(1);
             self.update_stat()
@@ -282,9 +257,9 @@ impl Ppu {
     }
   }
 
-  pub fn frame_buffer(&mut self) -> &[u8; FRAME_BUFFER_SIZE] {
+  pub fn frame_buffer(&mut self) -> &mut [u8; FRAME_BUFFER_SIZE] {
     if self.frame_index == self.frame_buffer_index {
-      return &self.frame_buffer;
+      return &mut self.frame_buffer;
     }
 
     for (index, pixel) in self.frame_buffer.chunks_mut(RGB_SIZE).enumerate() {
@@ -296,7 +271,7 @@ impl Ppu {
     }
 
     self.frame_buffer_index = self.frame_index;
-    &self.frame_buffer
+    &mut self.frame_buffer
   }
 
   pub fn set_palette_colors(&mut self, value: &Palette) {
@@ -389,11 +364,11 @@ impl Ppu {
     if self.bg_enable() {
       self.render_map(
         self.bg_map(),
-        self.regs.scx.load(),
-        self.regs.scy.load(),
+        self.regs.scx,
+        self.regs.scy,
         0,
         0,
-        self.regs.ly.load(),
+        self.regs.ly,
       );
     }
     if self.bg_enable() && self.window_enable() {
@@ -401,8 +376,8 @@ impl Ppu {
         self.window_map(),
         0,
         0,
-        self.regs.wx.load(),
-        self.regs.wy.load(),
+        self.regs.wx,
+        self.regs.wy,
         self.window_counter,
       );
     }
@@ -412,7 +387,7 @@ impl Ppu {
   }
 
   fn render_map(&mut self, map: bool, scx: u8, scy: u8, wx: u8, wy: u8, ld: u8) {
-    if self.regs.ly.load() < wy {
+    if self.regs.ly < wy {
       return;
     }
 
@@ -445,11 +420,11 @@ impl Ppu {
 
     // calculates the offset that is going to be used in the update of the color buffer
     // which stores Game Boy colors from 0 to 3
-    let mut color_offset = self.regs.ly.load() as usize * DISPLAY_WIDTH;
+    let mut color_offset = self.regs.ly as usize * DISPLAY_WIDTH;
 
     // obtains the current integer value (raw) for the background palette
     // this is going to be used for shade index value computation (DMG only)
-    let palette_v = self.regs.bgp.load();
+    let palette_v = self.regs.bgp;
 
     // calculates both the current Y and X positions within the tiles
     // using the bitwise and operation as an effective modulus 8
@@ -531,8 +506,8 @@ impl Ppu {
       // verifies if the sprite is currently located at the
       // current line that is going to be drawn and skips it
       // in case it's not
-      let is_contained = (obj.y <= self.regs.ly.load() as i16)
-        && ((obj.y + obj_height as i16) > self.regs.ly.load() as i16);
+      let is_contained =
+        (obj.y <= self.regs.ly as i16) && ((obj.y + obj_height as i16) > self.regs.ly as i16);
       if !is_contained {
         continue;
       }
@@ -550,27 +525,27 @@ impl Ppu {
       // let palette_v = self.palettes[palette_index as usize];
       //
       let palette_v = if palette_index == 0 {
-        self.regs.bgp.load()
+        self.regs.bgp
       } else if palette_index == 1 {
-        self.regs.obp0.load()
+        self.regs.obp0
       } else {
-        self.regs.obp1.load()
+        self.regs.obp1
       };
 
       // calculates the offset in the color buffer (raw color information
       // from 0 to 3) for the sprit that is going to be drawn, this value
       // is kept as a signed integer to allow proper negative number math
-      let mut color_offset = self.regs.ly.load() as i32 * DISPLAY_WIDTH as i32 + obj.x as i32;
+      let mut color_offset = self.regs.ly as i32 * DISPLAY_WIDTH as i32 + obj.x as i32;
 
       // calculates the offset in the frame buffer for the sprite
       // that is going to be drawn, this is going to be the starting
       // point for the draw operation to be performed
       let mut frame_offset =
-        (self.regs.ly.load() as i32 * DISPLAY_WIDTH as i32 + obj.x as i32) * RGB_SIZE as i32;
+        (self.regs.ly as i32 * DISPLAY_WIDTH as i32 + obj.x as i32) * RGB_SIZE as i32;
 
       // the relative title offset should range from 0 to 7 in 8x8
       // objects and from 0 to 15 in 8x16 objects
-      let mut tile_offset = self.regs.ly.load() as i16 - obj.y;
+      let mut tile_offset = self.regs.ly as i16 - obj.y;
 
       // in case we're flipping the object we must recompute the
       // tile offset as an inverted value using the object's height
@@ -669,7 +644,7 @@ impl Ppu {
   }
 
   fn stat_level(&self) -> bool {
-    self.stat_lyc() && self.regs.lyc.load() == self.regs.ly.load()
+    self.stat_lyc() && self.regs.lyc == self.regs.ly
       || self.stat_oam() && self.mode == PpuMode::OamRead
       || self.stat_vblank() && self.mode == PpuMode::VBlank
       || self.stat_hblank() && self.mode == PpuMode::HBlank
@@ -681,3 +656,70 @@ impl Default for Ppu {
     Self::new()
   }
 }
+
+impl Address for Ppu {
+  fn read(&self, addr: u16) -> u8 {
+    match addr {
+      0x8000..=0x9fff => self.vram[(addr & 0x1fff) as usize],
+      0xfe00..=0xfe9f => self.oam[(addr & 0x009f) as usize],
+      // Not Usable
+      0xfea0..=0xfeff => 0xff,
+      0xff40 => self.regs.lcdc,
+      0xff41 => self.regs.stat,
+      0xff42 => self.regs.scy,
+      0xff43 => self.regs.scx,
+      0xff44 => self.regs.ly,
+      0xff45 => self.regs.lyc,
+      0xff47 => self.regs.bgp,
+      0xff48 => self.regs.obp0,
+      0xff49 => self.regs.obp1,
+      0xff4a => self.regs.wy,
+      0xff4b => self.regs.wx,
+      _ => {
+        warn!("Reading from unknown PPU location 0x{:04x}", addr);
+        0xff
+      },
+    }
+  }
+
+  fn write(&mut self, addr: u16, value: u8) {
+    match addr {
+      0x8000..=0x9fff => {
+        self.vram[(addr & 0x1fff) as usize] = value;
+        if addr < 0x9800 {
+          self.update_tile(addr, value);
+        }
+      },
+      0xfe00..=0xfe9f => {
+        self.oam[(addr & 0x009f) as usize] = value;
+        self.update_object(addr, value);
+      },
+      // Not Usable
+      0xfea0..=0xfeff => (),
+      0xff40 => {
+        self.regs.lcdc = value;
+        if !self.lcd_enable() {
+          self.mode = PpuMode::HBlank;
+          self.dot = 0;
+          self.regs.ly = 0;
+          self.int_vblank = false;
+          self.int_stat = false;
+          self.window_counter = 0;
+        }
+      },
+      0xff41 => self.regs.stat = value,
+      0xff42 => self.regs.scy = value, // scrolling
+      0xff43 => self.regs.scx = value, // scrolling
+      0xff45 => self.regs.lyc = value, // LCD status
+      0xff47 => self.regs.bgp = value,
+      0xff48 => self.regs.obp0 = value,
+      0xff49 => self.regs.obp1 = value,
+      0xff4a => self.regs.wy = value, // scrolling
+      0xff4b => self.regs.wx = value, // scrolling
+      0xff7f => (),
+      _ => warn!("Writing in unknown PPU location 0x{:04x}", addr),
+    }
+  }
+}
+
+impl Device for Ppu {}

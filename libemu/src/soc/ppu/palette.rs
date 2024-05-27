@@ -1,7 +1,5 @@
 use super::{Palette, PALETTE_SIZE, RGB_SIZE};
 
-/// Represents a palette together with the metadata
-/// that is associated with it.
 #[derive(Clone, PartialEq, Eq)]
 pub struct PaletteInfo {
   name: String,
@@ -38,27 +36,7 @@ impl PaletteInfo {
     &self.name
   }
 
-  /// Returns the colors in RGB format.
   pub fn colors(&self) -> &Palette {
     &self.colors
-  }
-
-  /// Returns the colors in hex format, separated by comma.
-  pub fn colors_hex(&self) -> String {
-    let mut buffer = String::new();
-    let mut is_first = true;
-    for color in self.colors.iter() {
-      let r = color[0];
-      let g = color[1];
-      let b = color[2];
-      let color = (r as u32) << 16 | (g as u32) << 8 | b as u32;
-      if is_first {
-        is_first = false;
-      } else {
-        buffer.push(',');
-      }
-      buffer.push_str(format!("{:06x}", color).as_str());
-    }
-    buffer
   }
 }

@@ -1,14 +1,10 @@
-//! Game cartridge header.
-//!
-//! In the ROM at the address range `0x0100..0x0150` is the header,
-//! which encodes both physical attributes describing the hardware of the
-//! cartridge, flags describing console support, and characteristics of the
-//! software.
+use std::convert::TryInto;
+
 use log::warn;
 
-use crate::error::CartError;
+use crate::error::Error;
 
-use super::{licensee::Licensee, mbc::Kind, LOGO};
+use super::{licensee::Licensee, CartType, LOGO};
 
 #[derive(Debug)]
 pub struct Header {
@@ -25,7 +21,7 @@ pub struct Header {
   /// SGB model support.
   pub sgb: bool,
   /// Cartridge hardware.
-  pub cart: Kind,
+  pub cart: CartType,
   /// ROM size in bytes.
   pub romsz: usize,
   /// ROM size in bytes.
@@ -40,30 +36,46 @@ pub struct Header {
   pub gchk: u16,
 }
 
-/// Cartridge header.
-///
-/// Information about the ROM and the cartridge containing it. Stored in the
-/// byte range `[0x100, 0x150)`.
+impl Default for Header {
+  fn default() -> Self {
+    Self {
+      logo: false,
+      title: None,
+      licensee: Licensee::None,
+      dmg: false,
+      cgb: false,
+      sgb: false,
+      cart: CartType::Unknown,
+      romsz: 0,
+      ramsz: 0,
+      jpn: false,
+      version: 0,
+      hchk: 0,
+      gchk: 0,
+    }
+  }
+}
+
 impl Header {
-  pub fn new(rom: &[u8]) -> Result<Self, CartError> {
+  pub fn parse(rom: &[u8]) -> Result<Self, Error> {
     // slice the header
     let header: &[u8; 0x50] = rom
       .get(0x100..=0x14F)
-      .ok_or(CartError::Missing)?
+      .ok_or(Error::CustomError("Missing Header".to_string()))?
       .try_into()
-      .map_err(CartError::Slice)?;
+      .map_err(|_| Error::CustomError("Can not into slice".to_string()))?;
 
     // check logo
     let logo = header[0x04..=0x33] == LOGO;
     if !logo {
-      return Err(CartError::Logo);
+      return Err(Error::CustomError("Invalid logo".to_string()));
     }
 
     // parse title
     // TODO: check title parser
     let tlen = if header[0x43] & 0x80 == 0 { 16 } else { 15 };
     let title = match std::str::from_utf8(&header[0x34..0x34 + tlen])
-      .map_err(CartError::Title)?
+      .map_err(|_| Error::CustomError("Invalid title".to_string()))?
       .trim_matches('\0')
     {
       "" => None,
@@ -83,7 +95,10 @@ impl Header {
     let cgb = match header[0x43] & 0xbf {
       0x00 => Ok(false),
       0x80 => Ok(true),
-      byte => Err(CartError::Color(byte)),
+      byte => Err(Error::CustomError(format!(
+        "Invalid CGB flag: {:#04x}",
+        byte,
+      ))),
     }?;
 
     let sgb = match header[0x46] {
@@ -96,12 +111,15 @@ impl Header {
     };
 
     // parse cartridge type
-    let cart: Kind = header[0x47].try_into()?;
+    let cart = header[0x47].try_into()?;
 
     // parse ROM size
     let romsz = match header[0x48] {
       byte @ 0x00..=0x08 => Ok(0x8000 << byte),
-      byte => Err(CartError::Rom(byte)),
+      byte => Err(Error::CustomError(format!(
+        "Invalid ROM size: {:#04x}",
+        byte
+      ))),
     }?;
 
     // parse RAM size
@@ -112,14 +130,17 @@ impl Header {
       0x03 => Ok(0x8000),
       0x04 => Ok(0x20000),
       0x05 => Ok(0x10000),
-      byte => Err(CartError::Ram(byte)),
+      byte => Err(Error::CustomError(format!(
+        "Invalid RAM size: {:#04x}",
+        byte
+      ))),
     }?;
 
     // parse region
     let jpn = match header[0x4A] {
       0x00 => Ok(true),
       0x01 => Ok(false),
-      byte => Err(CartError::Region(byte)),
+      byte => Err(Error::CustomError(format!("Invalid region: {:#04x}", byte))),
     }?;
 
     // parse version
@@ -132,10 +153,10 @@ impl Header {
       .copied()
       .fold(0u8, |accum, itme| accum.wrapping_sub(itme).wrapping_sub(1));
     if chk != hchk {
-      return Err(CartError::HeaderCheck {
-        found: chk,
-        expected: hchk,
-      });
+      return Err(Error::CustomError(format!(
+        "Ecpected: {:#04x}, found: {:#04x}",
+        hchk, chk
+      )));
     }
 
     // parse global checksum
@@ -177,7 +198,7 @@ impl std::fmt::Display for Header {
     writeln!(f, "┌──────────────────┐")?;
     writeln!(f, "│ {:^16} │", self.title.as_deref().unwrap_or("Unknown"))?;
     writeln!(f, "├──────────────────┤")?;
-    writeln!(f, "│Licensee: {:>10}│", self.licensee)?;
+    writeln!(f, "│Licensee: {:>8}│", self.licensee)?;
     writeln!(f, "├──────────────────┤")?;
     writeln!(
       f,
@@ -214,38 +235,5 @@ impl std::fmt::Display for Header {
     writeln!(f, "│ Header:       {:0>2x} │", self.hchk)?;
     writeln!(f, "│ Global:     {:0>4x} │", self.gchk)?;
     write!(f, "└──────────────────┘")
-  }
-}
-
-#[cfg(test)]
-mod test {
-  #[test]
-  fn test_header() {
-    use dotenv::dotenv;
-    use log::debug;
-
-    use super::Header;
-    use std::{env, fs::File, io::Read};
-
-    dotenv().ok();
-    let filepath = env::var("ROM_PATH").expect("HEADER_TEST_PATH must be set");
-    let mut rom = vec![];
-
-    let file = File::open(filepath);
-    match file.and_then(|mut f| f.read_to_end(&mut rom)) {
-      Ok(_) => {},
-      Err(e) => panic!("Error reading file: {}", e),
-    };
-    env_logger::init();
-
-    match Header::new(&rom) {
-      Ok(header) => {
-        debug!("{}", header);
-      },
-      Err(e) => {
-        debug!("{:?}", e);
-        panic!("Error parsing header: {:?}", e);
-      },
-    }
   }
 }

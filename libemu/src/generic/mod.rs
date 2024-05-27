@@ -1,7 +1,4 @@
-pub mod arch;
-pub mod bus;
+pub mod address;
 pub mod device;
 pub mod memory;
-pub mod pcb;
-pub mod reg;
-pub mod share;
+pub mod shared;

@@ -1,97 +1,60 @@
-use crate::{
-  error::MemoryError,
-  generic::{
-    arch::{
-      address::{Address, TryAddress},
-      value::Value,
-    },
-    device::Device,
-  },
+use crate::generic::{
+  address::{Address, TryAddress},
+  device::Device,
 };
 
-/// Read Only Memory.
-// TODO: 1 chack clone
-#[derive(Debug, Clone)]
-pub struct Rom<V, const N: usize>(Box<[V; N]>)
-where
-  V: Value;
+use super::Error;
 
-impl<V, const N: usize> Rom<V, N>
-where
-  V: Value,
-{
-  /// Constructs a new and empty [`ROM`] resource.
+#[derive(Default)]
+pub struct Rom(Vec<u8>);
+
+impl Rom {
   pub fn new() -> Self {
     Self::default()
   }
-}
 
-impl<V, const N: usize> Default for Rom<V, N>
-where
-  V: Value,
-{
-  fn default() -> Self {
-    Self(
-      vec![Default::default(); N]
-        .into_boxed_slice()
-        .try_into()
-        .unwrap(),
-    )
+  pub fn set_data(&mut self, data: &[u8]) {
+    self.0 = data.to_vec();
+  }
+
+  pub fn reset(&mut self) {
+    self.0.clear();
   }
 }
 
-impl<V, const N: usize> From<&[V; N]> for Rom<V, N>
-where
-  V: Value,
-{
-  fn from(arr: &[V; N]) -> Self {
-    Self(Vec::from(&arr[..]).into_boxed_slice().try_into().unwrap())
+impl From<&[u8]> for Rom {
+  fn from(arr: &[u8]) -> Self {
+    Self(arr.to_vec())
   }
 }
 
-impl<Idx, V, const N: usize> Device<Idx, V> for Rom<V, N>
-where
-  Idx: Value,
-  V: Value,
-  usize: From<Idx>,
-{
-}
+impl Device for Rom {}
 
-impl<Idx, V, const N: usize> Address<Idx, V> for Rom<V, N>
-where
-  Idx: Value,
-  V: Value,
-  usize: From<Idx>,
-{
-  fn read(&self, idx: Idx) -> V {
-    self.try_read(idx).unwrap()
+impl Address for Rom {
+  fn read(&self, addr: u16) -> u8 {
+    self.try_read(addr).unwrap()
   }
 
-  fn write(&mut self, idx: Idx, val: V) {
-    self.try_write(idx, val).unwrap()
+  fn write(&mut self, addr: u16, value: u8) {
+    self.try_write(addr, value).unwrap()
   }
 }
 
-impl<Idx, V, const N: usize> TryAddress<Idx, V> for Rom<V, N>
-where
-  Idx: Value,
-  V: Value,
-  usize: From<Idx>,
-{
-  type Error = MemoryError<Idx>;
+impl TryAddress for Rom {
+  type Error = Error;
 
-  fn try_read(&self, idx: Idx) -> Result<V, Self::Error> {
+  fn try_read(&self, addr: u16) -> Result<u8, Self::Error> {
     self
       .0
-      .get(usize::from(idx))
+      .get(usize::from(addr))
       .copied()
-      .ok_or(MemoryError::Bounds(idx))
+      .ok_or(Error::InvalidAddress(addr))
   }
 
-  fn try_write(&mut self, idx: Idx, _val: V) -> Result<(), Self::Error> {
-    match self.0.get_mut(usize::from(idx)) {
-      Some(_) => Err(MemoryError::Write),
-      None => Err(MemoryError::Bounds(idx)),
+  fn try_write(&mut self, addr: u16, _value: u8) -> Result<(), Self::Error> {
+    match self.0.get_mut(usize::from(addr)) {
+      Some(_) => Err(Error::Write),
+      None => Err(Error::InvalidAddress(addr)),
     }
   }
 }
